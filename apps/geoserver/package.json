@@ -1,0 +1,9 @@
+{
+  "name": "geoserver",
+  "private": true,
+  "scripts": {
+    "up": "docker compose -f ../../docker-compose.yml up -d geoserver",
+    "down": "docker compose -f ../../docker-compose.yml stop geoserver",
+    "logs": "docker compose -f ../../docker-compose.yml logs -f geoserver"
+  }
+}

@@ -1,0 +1,7 @@
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+apps/db/dumps
+apps/geoserver/data_dir
+.env
+.git

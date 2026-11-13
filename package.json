@@ -1,0 +1,24 @@
+{
+  "name": "teste-geoserver",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm -r build",
+    "geoserver:up": "docker compose up -d geoserver",
+    "geoserver:down": "docker compose down",
+    "geoserver:logs": "docker compose logs -f geoserver",
+    "start": "pnpm infra:up && pnpm dev",
+    "infra:up": "docker compose up -d --build",
+    "infra:down": "docker compose down",
+    "db:up": "docker compose up -d --build postgis pgadmin",
+    "db:logs": "docker compose logs -f postgis",
+    "geoserver:publish": "python3 apps/geoserver/scripts/publish_postgis.py",
+    "geoserver:cache": "python3 apps/geoserver/scripts/cache.py",
+    "geoserver:styles": "python3 apps/geoserver/scripts/import_styles.py",
+    "db:inventario": "docker exec -i postgis psql -U postgres -d geomonitora -v ON_ERROR_STOP=1 -q -f - < apps/db/sql/inventario.sql",
+    "api:logs": "docker compose logs -f api",
+    "db:relatorios": "docker exec -i postgis psql -U postgres -d geomonitora -v ON_ERROR_STOP=1 -q -f - < apps/db/sql/relatorios.sql",
+    "usuarios": "docker exec -it teste-geoserver-api python -m app.usuarios"
+  }
+}

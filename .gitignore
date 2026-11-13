@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+apps/geoserver/data_dir/*
+!apps/geoserver/data_dir/.gitkeep
+*.tsbuildinfo
+apps/db/dumps/*
+!apps/db/dumps/.gitkeep
+apps/api/storage/*
+!apps/api/storage/.gitkeep
+__pycache__

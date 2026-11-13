@@ -1,0 +1,103 @@
+services:
+  postgis:
+    build: ./apps/db
+    container_name: postgis
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./apps/db/dumps:/dumps:ro
+    healthcheck:
+      # via TCP: durante a restauração inicial o Postgres só escuta no socket local,
+      # então o serviço só fica "healthy" depois que o dump terminar de carregar
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 900s
+    restart: unless-stopped
+
+  # API do visualizador (FastAPI): inventário de ativos, clientes, consumo, arquivos, válvulas
+  api:
+    build: ./apps/api
+    container_name: teste-geoserver-api
+    ports:
+      - "${API_PORT:-3000}:8000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgis:5432/geomonitora
+      ARQUIVOS_DIR: /data/arquivos
+    volumes:
+      # PDFs dos documentos (coloque aqui os PDFs de produção para os registros antigos)
+      - ./apps/api/storage:/data/arquivos
+    depends_on:
+      postgis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:9.4
+    container_name: teste-geoserver-pgadmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+      - ./apps/db/pgadmin/servers.json:/pgadmin4/servers.json:ro
+    restart: unless-stopped
+
+  geoserver:
+    build: ./apps/geoserver
+    container_name: geoserver
+    ports:
+      - "${GEOSERVER_PORT:-8080}:8080"
+    environment:
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER:-admin}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD:-geoserver}
+      SKIP_DEMO_DATA: "true"
+      CORS_ENABLED: "true"
+      CORS_ALLOWED_ORIGINS: "*"
+      CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,HEAD,OPTIONS"
+      # padrão da imagem é -Xmx1g; mais memória para renderização e cache de tiles
+      EXTRA_JAVA_OPTS: ${GEOSERVER_JAVA_OPTS:--Xms512m -Xmx2g}
+    volumes:
+      - ./apps/geoserver/data_dir:/opt/geoserver_data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/geoserver/web/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  # Front de produção: nginx com HTTP/2 (todas as requisições de tiles numa conexão só)
+  # e proxy para o GeoServer. Em desenvolvimento use `pnpm dev` (Vite, porta 5173).
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: teste-geoserver-web
+    ports:
+      - "${WEB_PORT:-8443}:443"
+    volumes:
+      - webcerts:/etc/nginx/certs
+    depends_on:
+      - geoserver
+      - api
+    restart: unless-stopped
+
+volumes:
+  webcerts:
+  pgdata:
+  pgadmin:

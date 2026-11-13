@@ -1,0 +1,8 @@
+{
+  "name": "db",
+  "private": true,
+  "scripts": {
+    "up": "docker compose -f ../../docker-compose.yml up -d --build postgis pgadmin",
+    "logs": "docker compose -f ../../docker-compose.yml logs -f postgis"
+  }
+}
